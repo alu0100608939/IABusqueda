@@ -3,7 +3,7 @@
 #include <stdlib.h>     
 #include <time.h>   
 #include <curses.h>
-
+#include <unistd.h>
 using namespace std;
 
 void pressEnter(){ 
@@ -21,27 +21,16 @@ private:
   int pos_j;
   int* tipo;
   bool visitado;
-  int* sucesores;
+ 
 public:  
   casilla_(int i =0, int j =0){
     pos_i = i;
     pos_j = j;
     visitado = false;
-    sucesores = new int [4];
     tipo = new int [3];
     for (int k = 0; k < 3; k++){
       tipo[k] = 0;
     }
-    for (int k = 0; k < 4; k++){
-      sucesores == 0;
-    }
-  }
-  int get_sucesor(int w){
-    return sucesores[w];
-  }
-  
-  void set_sucesor(int w){
-    sucesores[w] = 1;
   }
   
   void visita(){
@@ -98,7 +87,7 @@ public:
   }
 };
 
-  class cortacesped_{
+class cortacesped_{
 private:
   int* s; // 0 -> Arriba, 1->Izquierda, 2->Abajo 3->Derecha
   bool f;
@@ -112,7 +101,6 @@ private:
     f = false;
     pos = new casilla_(i,j);
   }
-  
   void set_pos(int i, int j){
     pos->asigna_pos(i, j);
   }
@@ -126,8 +114,7 @@ private:
   void set_s(int q){
     
     s[q] = 1;
-  }
-  
+  } 
   int get_s(int i){
     
     return s[i];
@@ -152,12 +139,14 @@ private:
   cortacesped_* qt;
 public:
   
-  jardin_(int an, int alt,int obs, int qi, int qj){
+  jardin_(int alt, int an,int obs, int qi, int qj){
     ancho_ = an;
     alto_ = alt;
     obs_ = obs;
     qt = new cortacesped_(qi,qj);
     casillas = new casilla_*[ancho_*alto_-1];
+    asigna_casillas();
+    asigna_obstaculos();
     }
     
   void asigna_casillas(){
@@ -168,6 +157,21 @@ public:
      } 
     }
   }
+  	  
+  void asigna_obstaculos(){
+    int n_obs = obs_*ancho_*alto_/100;
+    int * array_obs = new int[n_obs];
+    int k = rand() % (ancho_*alto_);
+    for (int i = 0; i < n_obs; i++){
+      while (casillas[k]->get_tipo() == 2){
+      k = rand() % (ancho_*alto_);
+      }
+      
+      casillas[k]->asigna_cesped_obs();
+  
+    }
+  }
+  
     int nodo(int i, int j, int k){
     if (k == 0){
       return (i-1)+j*ancho_;
@@ -183,42 +187,6 @@ public:
     }
   }
   
-  void asigna_sucesores(){
-   
-    for (int i = 0; i < ancho_; i++){ 
-	for (int j = 0; j < alto_; j++){
-	
-	  if (j!=0){
-	  
-	    if(casillas[i+(j-1)*ancho_]->get_tipo()!=2){
-	   casillas[i+j*ancho_]->set_sucesor(1);
-	    }
-	  }
-	  
-	  if (j!=ancho_-1){
-
-	    if(casillas[i+(j+1)*ancho_]->get_tipo()!=2){
-
-	    casillas[i+j*ancho_]->set_sucesor(3);
-	    } 
-	  }
-	  if (i!=0){
-	    if(casillas[(i-1)+j*ancho_]->get_tipo()!=2){
-	    casillas[i+j*ancho_]->set_sucesor(0);
-	    }
-	  }
-	  if (i!=alto_-1){
-	     
-	    if(casillas[(i+1)+j*ancho_]->get_tipo()!=2){
-	     
-	      casillas[i+j*ancho_]->set_sucesor(2);
-	  }
-	}
-	}
-    }
-
-  }
-  
   void runDFS(int i, int j){
     int a = i;
     int b = j;
@@ -231,11 +199,14 @@ public:
 	//for (int j = b; j < alto_; j++){
 	  for(int k = 0; k < 4; k++){
 	   // cout << i << " " << j << " " << k << endl;
-	    if(casillas[i+j*ancho_]->get_sucesor(k) == 1 && 
-	      casillas[nodo(i,j,k)]->get_visitado() == false){	      
+	    corta_recon();
+	    if(qt->get_s(k) == 0 && 
+	      casillas[nodo(i,j,k)]->get_visitado() == false){
+	      cout << qt->get_s(k) << " " << k << endl;
 	      corta_move_auto(k);
-	      pressEnter();
+	       usleep(50000);
 	      runDFS(qt->get_pos_i(),qt->get_pos_j());
+	      
 	      if(k == 0){
 		corta_move_auto(2);
 	      }
@@ -248,7 +219,7 @@ public:
 	      if(k == 3){
 		corta_move_auto(1);
 	      }
-	       pressEnter();
+	       usleep(50000);
 	   // }
 	  //}
 	    }
@@ -257,40 +228,25 @@ public:
 //    cout << "Salida de DFS "<< endl;
   }
 	  
-	  
-  void asigna_obstaculos(){
-    int n_obs = obs_*ancho_*alto_/100;
-    int * array_obs = new int[n_obs];
-    int k;
-    for (int i = 0; i < n_obs; i++){
-      k = rand() % (ancho_*alto_);
-      casillas[k]->asigna_cesped_obs();
-  
-    }
-  }
-   
   void corta_recon(){
     qt->reset_s();
-        
+  //  cout << "Dentro de corta_recon" << endl;
     if (casillas[qt->get_pos_i()+qt->get_pos_j()*ancho_]->get_tipo() == 0){
-      
       casillas[qt->get_pos_i()+qt->get_pos_j()*ancho_]->asigna_cesped_bajo();
-    
     }
     
     if(qt->get_pos_i() == 0 || casillas[qt->get_pos_i()-1+qt->get_pos_j()*ancho_]->get_tipo() == 2){
       qt->set_s(0);
     
     }
-    if(qt->get_pos_i() == alto_-1 || casillas[qt->get_pos_i()+1+qt->get_pos_j()*ancho_]->get_tipo() == 2){
+    if (qt->get_pos_i() == ancho_-1 || casillas[qt->get_pos_i()+1+qt->get_pos_j()*ancho_]->get_tipo() == 2){
       qt->set_s(2);
-      
     }
     if(qt->get_pos_j() == 0 || casillas[qt->get_pos_i()+(qt->get_pos_j()-1)*ancho_]->get_tipo() == 2){
       qt->set_s(1);
       
     }
-    if(qt->get_pos_j() == ancho_-1 || casillas[qt->get_pos_i()+(qt->get_pos_j()+1)*ancho_]->get_tipo() == 2){
+    if(qt->get_pos_j() == alto_-1 || casillas[qt->get_pos_i()+(qt->get_pos_j()+1)*ancho_]->get_tipo() == 2){
       qt->set_s(3);
       
     }
@@ -312,12 +268,12 @@ public:
      if(control == '4' && qt->get_pos_j()-1 >= 0 && qt->get_s(1) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()-1);
     }
-     if(control == '2' && (qt->get_pos_i()+1) <= alto_ && qt->get_s(2) == 0){
+     if(control == '2' && (qt->get_pos_i()+1) <= ancho_ && qt->get_s(2) == 0){
      
       qt->set_pos(qt->get_pos_i()+1, qt->get_pos_j());
      
     }
-     if(control == '6' && qt->get_pos_j()+1 <= ancho_ && qt->get_s(3) == 0){
+     if(control == '6' && qt->get_pos_j()+1 <= alto_ && qt->get_s(3) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()+1);
       
     }
@@ -326,40 +282,38 @@ public:
   }
    void corta_move_auto(int control){
     
-    corta_recon();
+   corta_recon();
    // casillas[qt->get_pos_i(),qt->get_pos_j()]->asigna_cesped_bajo();
     
     if(control == 0 && qt->get_pos_i()-1 >= 0 && qt->get_s(0) == 0){
-  
       qt->set_pos(qt->get_pos_i()-1, qt->get_pos_j());
       
     }
      if(control == 1 && qt->get_pos_j()-1 >= 0 && qt->get_s(1) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()-1);
     }
-     if(control == 2 && (qt->get_pos_i()+1) <= alto_ && qt->get_s(2) == 0){
+     if(control == 2 && (qt->get_pos_i()+1) <= ancho_-1 && qt->get_s(2) == 0){
    //  cout << "Mueve abajo" << endl;
       qt->set_pos(qt->get_pos_i()+1, qt->get_pos_j());
      
     }
-     if(control == 3 && qt->get_pos_j()+1 <= ancho_ && qt->get_s(3) == 0){
+     if(control == 3 && qt->get_pos_j()+1 <= alto_-1 && qt->get_s(3) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()+1);
       
     }
     mostrar_jardin();
   }
-	  /*
-	   * 
-   * 
-  ~jardin_(){
-    delete casillas;
-  }*/
+	  
+
 
   void mostrar_jardin(){
     int k;
     system("clear");
+    cout << endl << endl;
   for (int i = 0; i < ancho_; i++){ 
+      cout << "\t\t";
 	for (int j = 0; j < alto_; j++){
+	
 	if  (i+j*ancho_ == qt->get_pos_i()+qt->get_pos_j()*ancho_){
 	   cout << "\033[31m██\033[0m";   
 	}
@@ -376,6 +330,7 @@ public:
       }
   cout << endl;
   }
+   cout << endl << endl;
   }
 };
     
