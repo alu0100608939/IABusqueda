@@ -6,6 +6,9 @@
 #include <unistd.h>
 using namespace std;
 
+/**
+ * Método pressEnter(): Espera a que se pulse la tecla intro para continuar
+ **/
 void pressEnter(){ 
  int i=0;
   while (i == 0){
@@ -13,17 +16,19 @@ void pressEnter(){
     i = 1;
   }
 }
-
+/*
+ * Clase Casilla_: El Jardín estara compuesto por un array de estas casillas.
+ **/
   
 class casilla_{
 private:
-  int pos_i;
-  int pos_j;
-  int* tipo;
+  int pos_i; // Coordenadad
+  int pos_j; // Coordenada
+  int* tipo; // Siendo 0 Cesped alto, 1 cesped bajo y 2 obstáculo
   bool visitado;
  
 public:  
-  casilla_(int i =0, int j =0){
+  casilla_(int i =0, int j =0){ //Constructor
     pos_i = i;
     pos_j = j;
     visitado = false;
@@ -33,13 +38,15 @@ public:
     }
   }
   
-  void visita(){
+  void visita(){ // Método para visitar un nodo
     visitado = true;
   }
   
-  bool get_visitado(){
+  bool get_visitado(){ // Método para saber si un nodo está visitado
     return visitado;
   }
+  
+  //Metodos de asignación de tipo.
   
   void asigna_cesped_alto(){
     for (int i = 0; i < 3; i++){
@@ -64,6 +71,7 @@ public:
 
      }
 }
+//Devuelve el tipo de una casilla. Solo podrá ser de un tipo.
   int get_tipo(){
     if (tipo[0] == 1){
       return 0;
@@ -74,26 +82,32 @@ public:
     else
       return 2;
   }
-  
+  // Métodos  para obtener las coordenadas
   int get_pos_i(){
    return pos_i;
   }
    int get_pos_j(){
     return pos_j;
   }
+  
+  //Método para asignar coordenadas
   void asigna_pos(int i, int j){
     pos_i = i;
     pos_j = j;
   }
 };
+/*
+ * Clase Cortacesped: Contara con un sensor de proximidad s que devuelve el estado de las
+ * casillas accesibles, si ha de cortar el cesped y la casilla en la que está posicionado
+ **/
 
-class cortacesped_{
+class cortacesped_{ 
 private:
   int* s; // 0 -> Arriba, 1->Izquierda, 2->Abajo 3->Derecha
   bool f;
   casilla_* pos;
   public:
-  cortacesped_(int i =0,int j =0){
+  cortacesped_(int i =0,int j =0){ // Constructor
     s = new int[4];
     for (int k = 0; k < 4; k++){
       s[k] = 0;
@@ -101,9 +115,19 @@ private:
     f = false;
     pos = new casilla_(i,j);
   }
+  
+  //Setters.
   void set_pos(int i, int j){
     pos->asigna_pos(i, j);
   }
+  void set_s(int q){
+    
+    s[q] = 1;
+  }
+  void set_f(){
+    f = true;
+  }
+  // Getters
   int get_pos_i(){
     return pos->get_pos_i();
   }
@@ -111,25 +135,23 @@ private:
   int get_pos_j(){
     return pos->get_pos_j();
   }
-  void set_s(int q){
-    
-    s[q] = 1;
-  } 
+
   int get_s(int i){
     
     return s[i];
   }
-  void set_f(){
-    f = true;
-  }
-  void reset_s(){
+
+  void reset_s(){ // Método que resetea el sensor.
     for (int i=0;i<4;i++){
       s[i] = 0;
     }
   }
 };
 
-
+/*Clase Jardin: Tablero donde se aplican los métodos.
+ * Cuenta con dos dimensiones ancho_ y alto_. Se declarara un array de casillas de 
+ * tamaño ancho_*alto_. Ademas cuenta con un objeto cortacesped asociado.
+ */
 class jardin_{
 private:
   int ancho_;
@@ -139,7 +161,7 @@ private:
   cortacesped_* qt;
 public:
   
-  jardin_(int alt, int an,int obs, int qi, int qj){
+  jardin_(int alt, int an,int obs, int qi, int qj){ //Constructor
     ancho_ = an;
     alto_ = alt;
     obs_ = obs;
@@ -149,7 +171,7 @@ public:
     asigna_obstaculos();
     }
     
-  void asigna_casillas(){
+  void asigna_casillas(){ //Iniciacion de casillas a cesped alto
      for (int i = 0; i < ancho_; i++){ 
 	for (int j = 0; j < alto_; j++){
 	  casillas[i+j*ancho_] = new casilla_(i,j);	  
@@ -158,7 +180,7 @@ public:
     }
   }
   	  
-  void asigna_obstaculos(){
+  void asigna_obstaculos(){ // Asignación aleatoria de obstáculos respecto al porcentaje
     int n_obs = obs_*ancho_*alto_/100;
     int * array_obs = new int[n_obs];
     int k = rand() % (ancho_*alto_);
@@ -172,7 +194,7 @@ public:
     }
   }
   
-    int nodo(int i, int j, int k){
+    int nodo(int i, int j, int k){ // Método que dado un nodo i,j y un control k, devuleve el siguiente nodo
     if (k == 0){
       return (i-1)+j*ancho_;
     }
@@ -187,7 +209,7 @@ public:
     }
   }
   
-  void runDFS(int i, int j){
+  void runDFS(int i, int j){ // Profundidad
     int a = i;
     int b = j;
      casillas[i+j*ancho_]->visita();
@@ -303,12 +325,48 @@ public:
     }
     mostrar_jardin();
   }
-	  
-
+  
+  int distancia_manhattan(casilla_* A, casilla_* B){
+    return abs(A->get_pos_i() - B->get_pos_i()) + abs(A->get_pos_j()-B->get_pos_j());
+  }
+  
+  
+  void camino(int i, int j){
+    int min = 999999;
+    int min_ ;
+    int* dist = new int [4];
+    while(qt->get_pos_i() != i || qt->get_pos_j() !=j || casillas[i+j*ancho_]->get_tipo() == 2){
+    corta_recon();
+    for(int k = 0; k < 4; k++){
+      dist[k] = 999999;
+	 corta_recon();
+	    if(qt->get_s(k) == 0){
+	      dist[k] = distancia_manhattan(casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)], casillas[i+j*ancho_]);
+	    }
+    }
+     for(int k = 0; k < 4; k++){
+       cout << dist[k] << " ";
+     }
+       
+    for (int q = 0; q < 4; q++){
+    if (dist[q] < min){
+      min = dist[q];
+      min_ = q;
+      }
+    }
+    cout << min;
+    corta_move_auto(min_);
+    mostrar_jardin();
+    pressEnter();
+    }
+    cout << "We are out" << endl;
+  }
+    
+ 
 
   void mostrar_jardin(){
     int k;
-    system("clear");
+   system("clear");
     cout << endl << endl;
   for (int i = 0; i < ancho_; i++){ 
       cout << "\t\t";
