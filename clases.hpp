@@ -4,6 +4,7 @@
 #include <time.h>   
 #include <curses.h>
 #include <unistd.h>
+#include <list>
 using namespace std;
 
 /**
@@ -26,12 +27,15 @@ private:
   int pos_j; // Coordenada
   int* tipo; // Siendo 0 Cesped alto, 1 cesped bajo y 2 obstáculo
   bool visitado;
- 
+  int coste;
+  int coste_ac;
 public:  
   casilla_(int i =0, int j =0){ //Constructor
     pos_i = i;
     pos_j = j;
     visitado = false;
+    coste = 99999;
+    coste_ac = 1;
     tipo = new int [3];
     for (int k = 0; k < 3; k++){
       tipo[k] = 0;
@@ -68,7 +72,6 @@ public:
       tipo[i] = 1;
     else
       tipo[i] = 0;
-
      }
 }
 //Devuelve el tipo de una casilla. Solo podrá ser de un tipo.
@@ -95,7 +98,28 @@ public:
     pos_i = i;
     pos_j = j;
   }
+  void set_coste(int c){
+    coste = c;
+  }
+  void set_coste_ac(int c){
+    coste_ac = c;
+  }
+  int get_coste(){
+    return coste;
+  }
+  
+  int get_coste_ac(){
+    return coste_ac;
+  }
+  
 };
+bool compare_casilla(casilla_ cas1, casilla_ cas2){
+    if (cas1.get_coste() < cas2.get_coste())
+      return true;
+   
+    else
+      return false;
+  }
 /*
  * Clase Cortacesped: Contara con un sensor de proximidad s que devuelve el estado de las
  * casillas accesibles, si ha de cortar el cesped y la casilla en la que está posicionado
@@ -120,6 +144,12 @@ private:
   void set_pos(int i, int j){
     pos->asigna_pos(i, j);
   }
+  void set_pos_2(casilla_* cas){
+    pos = cas;
+  }
+    
+    
+    
   void set_s(int q){
     
     s[q] = 1;
@@ -137,7 +167,6 @@ private:
   }
 
   int get_s(int i){
-    
     return s[i];
   }
 
@@ -147,6 +176,8 @@ private:
     }
   }
 };
+
+
 
 /*Clase Jardin: Tablero donde se aplican los métodos.
  * Cuenta con dos dimensiones ancho_ y alto_. Se declarara un array de casillas de 
@@ -249,7 +280,140 @@ public:
     }
 //    cout << "Salida de DFS "<< endl;
   }
-	  
+  
+    void camino(int i, int j, int i_f, int j_f){
+     if (i != i_f || j != j_f){
+      int dist[4]; 
+      int min = 999999;
+      int min_  = 12;
+      casillas[i+j*ancho_]->visita();
+	corta_recon();
+	for(int k = 0; k < 4; k++){
+	  dist[k] = 999999;
+	  corta_recon();
+	  if(qt->get_s(k) == 0 && casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)]->get_visitado() == false){
+	    dist[k] = distancia_manhattan(casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)], casillas[i_f+j_f*ancho_]);
+	   }
+	}         
+	for (int q = 0; q < 4; q++){
+	  if (dist[q] < min){
+	    min = dist[q];
+	    min_ = q;
+	  }
+	}
+	cout << min_;
+	
+	corta_move_auto(min_);
+	if (dist[min_] == 0){
+	  return;
+	}
+	usleep(50000);
+	if (min_ != 12){
+	camino(qt->get_pos_i(),qt->get_pos_j(), i_f, j_f);
+	}
+	
+	
+	if (i != i_f || j != j_f){
+	      if(min_ == 0){
+		corta_move_auto(2);
+		camino(qt->get_pos_i(),qt->get_pos_j(), i_f, j_f);
+	      }
+	      if(min_ == 1){
+		corta_move_auto(3);
+		camino(qt->get_pos_i(),qt->get_pos_j(), i_f, j_f);
+	      }
+	      if(min_ == 2){
+		corta_move_auto(0);
+		camino(qt->get_pos_i(),qt->get_pos_j(), i_f, j_f);
+	      }
+	      if(min_ == 3){
+		corta_move_auto(1);
+ 		camino(qt->get_pos_i(),qt->get_pos_j(), i_f, j_f);
+	      }
+	       usleep(500000);
+	}
+      }
+     }
+    
+    void camino2(int x, int y, int i_f, int j_f){
+
+	list <casilla_> abierto;  
+	list <casilla_> cerrado;
+	list <casilla_>::iterator it = abierto.begin();
+	
+	abierto.push_back(*casillas[0]);
+	abierto.front().set_coste(distancia_manhattan(casillas[x+y*ancho_], casillas[i_f+j_f*ancho_]));
+	
+	while (abierto.empty() == false || (abierto.front().get_pos_i() == i_f && abierto.front().get_pos_j() == j_f)){
+	  it = abierto.begin();
+	  qt->set_pos_2(&abierto.front());
+	  for(int k = 0; k < 4; k++){
+	    corta_recon2();     
+	    if(qt->get_s(k) == 0){
+	      abierto.push_back(*casillas[qt->get_pos_i() + qt->get_pos_j()*ancho_]);
+	      abierto.back().set_coste_ac(casillas[qt->get_pos_i()+qt->get_pos_j()*ancho_]->get_coste_ac()+1);
+	      abierto.back().set_coste(distancia_manhattan(casillas[qt->get_pos_i() + qt->get_pos_j()*ancho_],casillas[i_f+j_f*ancho_])+abierto.back().get_coste_ac());
+	    }
+	    while(it != abierto.end()){
+	      if((it->get_pos_i()+it->get_pos_j()*ancho_) == (abierto.back().get_pos_i() + abierto.back().get_pos_j()*ancho_)){
+		if (it->get_coste() < abierto.back().get_coste()){
+		  abierto.pop_back();
+		}
+	      }
+	      it++;
+	    }
+	  }
+	 abierto.sort(compare_casilla);
+	 qt->set_pos_2(&abierto.front());
+	 cerrado.push_back(abierto.front());
+	 abierto.pop_front();
+	  }
+	
+	while(cerrado.empty() != true){
+	  qt->set_pos_2(&cerrado.front());
+	  corta_recon();
+	  mostrar_jardin();
+	  cerrado.pop_front();
+	  pressEnter();
+	}
+	
+	
+	
+	
+	/*
+	while (abierto.empty() == false || (abierto.front().get_pos_i() == i_f && abierto.front().get_pos_j() == j_f)){
+	    
+	    for(int k = 0; k < 4; k++){
+	      corta_recon2();     
+	 	if(qt->get_s(k) == 0 && casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)]->get_visitado() == false){		 
+		  abierto.push_back(*casillas[cerrado.back().get_pos_i(), cerrado.back().get_pos_j(),k]);
+		  abierto.back().set_coste_ac(casillas[qt->get_pos_i()+ (qt->get_pos_j())*ancho_]->get_coste_ac()+1);
+		  abierto.back().set_coste(distancia_manhattan(casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)], casillas[i_f+j_f*ancho_])+abierto.back().get_coste_ac());
+		 
+		 /* while(it != abierto.end()){
+		    if(casillas[it->get_pos_i()+it->get_pos_j()*ancho_] == casillas[abierto.back().get_pos_i()+abierto.back().get_pos_j()*ancho_]){
+		      if(it->get_coste() < abierto.back().get_coste()){
+			abierto.pop_back();
+		      }
+		    }
+		    it++;
+		  }
+		}
+	      }
+	cerrado.push_back(abierto.front());
+	abierto.pop_front();
+	abierto.sort(compare_casilla);
+	qt->set_pos_2(&abierto.front());
+	}
+	
+	cout << "Camino encontrado" << endl;
+	qt->set_pos_2(casillas[0]);
+	corta_recon();
+	
+	
+	}*/
+      }
+      
   void corta_recon(){
     qt->reset_s();
   //  cout << "Dentro de corta_recon" << endl;
@@ -273,7 +437,25 @@ public:
       
     }
   }
-  
+  void corta_recon2(){
+    qt->reset_s();
+  //  cout << "Dentro de corta_recon" << endl;
+    if(qt->get_pos_i() == 0 || casillas[qt->get_pos_i()-1+qt->get_pos_j()*ancho_]->get_tipo() == 2){
+      qt->set_s(0);
+    
+    }
+    if (qt->get_pos_i() == ancho_-1 || casillas[qt->get_pos_i()+1+qt->get_pos_j()*ancho_]->get_tipo() == 2){
+      qt->set_s(2);
+    }
+    if(qt->get_pos_j() == 0 || casillas[qt->get_pos_i()+(qt->get_pos_j()-1)*ancho_]->get_tipo() == 2){
+      qt->set_s(1);
+      
+    }
+    if(qt->get_pos_j() == alto_-1 || casillas[qt->get_pos_i()+(qt->get_pos_j()+1)*ancho_]->get_tipo() == 2){
+      qt->set_s(3);
+      
+    }
+  }
   void corta_move(){
     initscr();
     cbreak ();
@@ -309,68 +491,51 @@ public:
     
     if(control == 0 && qt->get_pos_i()-1 >= 0 && qt->get_s(0) == 0){
       qt->set_pos(qt->get_pos_i()-1, qt->get_pos_j());
+      mostrar_jardin();
       
     }
      if(control == 1 && qt->get_pos_j()-1 >= 0 && qt->get_s(1) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()-1);
+      mostrar_jardin();
     }
      if(control == 2 && (qt->get_pos_i()+1) <= ancho_-1 && qt->get_s(2) == 0){
    //  cout << "Mueve abajo" << endl;
       qt->set_pos(qt->get_pos_i()+1, qt->get_pos_j());
+      mostrar_jardin();
      
     }
      if(control == 3 && qt->get_pos_j()+1 <= alto_-1 && qt->get_s(3) == 0){
       qt->set_pos(qt->get_pos_i(), qt->get_pos_j()+1);
+      mostrar_jardin();
       
     }
-    mostrar_jardin();
+
   }
   
   int distancia_manhattan(casilla_* A, casilla_* B){
     return abs(A->get_pos_i() - B->get_pos_i()) + abs(A->get_pos_j()-B->get_pos_j());
   }
-  
-  
-  void camino(int i, int j){
-    int min = 999999;
-    int min_ ;
-    int* dist = new int [4];
-    while(qt->get_pos_i() != i || qt->get_pos_j() !=j || casillas[i+j*ancho_]->get_tipo() == 2){
-    corta_recon();
-    for(int k = 0; k < 4; k++){
-      dist[k] = 999999;
-	 corta_recon();
-	    if(qt->get_s(k) == 0){
-	      dist[k] = distancia_manhattan(casillas[nodo(qt->get_pos_i(),qt->get_pos_j(),k)], casillas[i+j*ancho_]);
-	    }
-    }
-     for(int k = 0; k < 4; k++){
-       cout << dist[k] << " ";
-     }
-       
-    for (int q = 0; q < 4; q++){
-    if (dist[q] < min){
-      min = dist[q];
-      min_ = q;
-      }
-    }
-    cout << min;
-    corta_move_auto(min_);
-    mostrar_jardin();
-    pressEnter();
-    }
-    cout << "We are out" << endl;
-  }
-    
- 
 
+ 
   void mostrar_jardin(){
     int k;
-   system("clear");
-    cout << endl << endl;
-  for (int i = 0; i < ancho_; i++){ 
-      cout << "\t\t";
-	for (int j = 0; j < alto_; j++){
+    system("clear");
+      cout << "\t\t  ";
+    
+  for (int j = 0; j < alto_; j++){
+      if (j < 10)
+	cout << j << " ";
+      else
+	cout << j;
+    }
+    cout << endl;
+  for (int i = 0; i < ancho_; i++){
+    if (i < 10)
+      cout <<"\t"<<"\t" << i << " ";
+    else
+       cout << "\t\t" << i;
+    
+    for (int j = 0; j < alto_; j++){
 	
 	if  (i+j*ancho_ == qt->get_pos_i()+qt->get_pos_j()*ancho_){
 	   cout << "\033[31m██\033[0m";   
@@ -387,8 +552,7 @@ public:
 	
       }
   cout << endl;
-  }
-   cout << endl << endl;
+  } 
   }
 };
     

@@ -33,7 +33,8 @@ int main(){
   Jardin.mostrar_jardin();
 
   pressEnter();
-  cout << "Elija el modo de ejecución: " << endl << "	1. DFS" << endl << "	2. Manual" << "	3. Camino Escalada"<<endl;
+  cout << "Elija el modo de ejecución: " << endl << "	1. DFS" << endl << "	2. Manual" 
+  << "	3. Camino"<<"	4. Camino2" <<endl;
   cin >> op;
   
   switch(op){
@@ -55,10 +56,17 @@ int main(){
 	cin >> c_i;
 	cout << "Coordenada y:";
 	cin >> c_j;
-        Jardin.camino(c_i,c_j);
+        Jardin.camino(x,y,c_j,c_i);
 	break;
+    case 4:
+      cout << "Introduzca el punto al que calcular el camino" << endl << "Coordenada x:";
+	cin >> c_i;
+	cout << "Coordenada y:";
+	cin >> c_j;
+      Jardin.camino2(x,y,c_j,c_i);
+      break;
   } 
-  Jardin.mostrar_jardin();
+  //Jardin.mostrar_jardin();
   pressEnter();
   
 }
